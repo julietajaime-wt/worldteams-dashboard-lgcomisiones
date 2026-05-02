@@ -203,10 +203,118 @@ function CustomTooltip({ active, payload, label }) {
   );
 }
 
+
+// ─── SLACK CONFIG ────────────────────────────────────────────────────────────
+const SLACK_WEBHOOK = "https://hooks.slack.com/services/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";
+const DASHBOARD_URL = "https://worldteams-dashboard-lgcomisiones.vercel.app";
+const MES = "Abril 2026";
+
+// ─── SLACK MODAL ─────────────────────────────────────────────────────────────
+function SlackModal({ onClose }) {
+  const mensaje = `Hola! Soy Claudita, la asistente IA de Juli Jaime. Les comparto las comisiones de Lead Gen del mes ${MES}. Revisar y confirmar a la brevedad! Gracias totales!\n\n🔗 ${DASHBOARD_URL}`;
+  const [status, setStatus] = useState("idle");
+
+  async function enviar() {
+    setStatus("sending");
+    try {
+      await fetch(SLACK_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `Hola! Soy Claudita, la asistente IA de Juli Jaime. Les comparto las comisiones de Lead Gen del mes *${MES}*. Revisar y confirmar a la brevedad! Gracias totales!\n\n🔗 ${DASHBOARD_URL}`,
+        }),
+      });
+      setStatus("sent");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000, padding: 24,
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: 16, padding: 28,
+        maxWidth: 480, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+      }}>
+        {status === "sent" ? (
+          <div style={{ textAlign: "center", padding: "16px 0" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+            <div style={{ fontFamily: "\'Space Grotesk\', sans-serif", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+              ¡Mensaje enviado!
+            </div>
+            <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 20 }}>
+              Claudita ya avisó en Slack.
+            </div>
+            <button onClick={onClose} style={{
+              background: C.teal, color: "#fff", border: "none", borderRadius: 20,
+              padding: "8px 24px", fontFamily: "\'Space Grotesk\', sans-serif",
+              fontSize: 13, fontWeight: 500, cursor: "pointer",
+            }}>Cerrar</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontFamily: "\'Space Grotesk\', sans-serif", fontSize: 15, fontWeight: 600 }}>
+                Vista previa del mensaje
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: C.textMuted }}>✕</button>
+            </div>
+            <div style={{
+              background: "#f8f8f8", borderRadius: 10, padding: 16,
+              marginBottom: 20, border: `0.5px solid ${C.border}`,
+            }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  background: C.darkGreen, display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 18,
+                }}>🤖</div>
+                <div>
+                  <div style={{ fontFamily: "\'Space Grotesk\', sans-serif", fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                    Claudita <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 400 }}>hoy</span>
+                  </div>
+                  <div style={{ fontSize: 13, lineHeight: 1.5, color: C.text, whiteSpace: "pre-line" }}>
+                    {mensaje}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={onClose} style={{
+                background: "none", border: `0.5px solid ${C.border}`, borderRadius: 20,
+                padding: "8px 20px", fontFamily: "\'Space Grotesk\', sans-serif",
+                fontSize: 13, cursor: "pointer", color: C.textMuted,
+              }}>Cancelar</button>
+              <button onClick={enviar} disabled={status === "sending"} style={{
+                background: status === "sending" ? C.textMuted : C.darkGreen,
+                color: C.lime, border: "none", borderRadius: 20,
+                padding: "8px 24px", fontFamily: "\'Space Grotesk\', sans-serif",
+                fontSize: 13, fontWeight: 600, cursor: status === "sending" ? "default" : "pointer",
+              }}>
+                {status === "sending" ? "Enviando..." : "Enviar a Slack ↗"}
+              </button>
+            </div>
+            {status === "error" && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "#c0392b", textAlign: "center" }}>
+                Hubo un error. Intentá de nuevo.
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [meetingsFilter, setMeetingsFilter] = useState("all");
   const [detailSearch, setDetailSearch] = useState("");
+  const [showSlack, setShowSlack] = useState(false);
 
   const totalComMeetings = MEETINGS_DATA.reduce((a, m) => a + m.valor, 0);
   const totalComCierres  = CIERRES_DATA.reduce((a, c) => a + c.valor, 0);
@@ -250,6 +358,7 @@ export default function Dashboard() {
       minHeight: "100vh",
       padding: "0",
     }}>
+      {showSlack && <SlackModal onClose={() => setShowSlack(false)} />}
       {/* HEADER */}
       <div style={{
         background: C.darkGreen, padding: "18px 32px",
@@ -263,12 +372,25 @@ export default function Dashboard() {
             Dashboard de comisiones
           </div>
         </div>
-        <div style={{
-          background: C.lime, color: C.darkGreen,
-          fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600,
-          padding: "6px 16px", borderRadius: 20,
-        }}>
-          Abril 2026
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{
+            background: C.lime, color: C.darkGreen,
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600,
+            padding: "6px 16px", borderRadius: 20,
+          }}>
+            Abril 2026
+          </div>
+          <button
+            onClick={() => setShowSlack(true)}
+            style={{
+              background: C.magenta, color: "#fff", border: "none", borderRadius: 20,
+              padding: "6px 16px", fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 13, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6,
+            }}
+          >
+            📣 Enviar a Slack
+          </button>
         </div>
       </div>
 
